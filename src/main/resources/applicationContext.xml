@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--扫包-->
+   <!-- <context:component-scan base-package="net.xiaopang.service,net.xiaopang.dao"/>-->
+    <context:component-scan base-package="net.xiaopang.service,net.xiaopang.dao"/>
+    <!--读取配置文件-->
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+    <!--数据源-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="${jdbc.driverClassName}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="maxActive" value="100"/>
+        <property name="minIdle" value="2"/>
+    </bean>
+    <!--jdbcTemplate-->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <!--事务-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="select*" propagation="SUPPORTS"/>
+            <tx:method name="get*" propagation="SUPPORTS"/>
+            <tx:method name="query*" propagation="SUPPORTS"/>
+            <tx:method name="add*" propagation="REQUIRED"/>
+            <tx:method name="insert*" propagation="REQUIRED"/>
+            <tx:method name="update*" propagation="REQUIRED"/>
+            <tx:method name="delete*" propagation="REQUIRED"/>
+        </tx:attributes>
+    </tx:advice>
+    <aop:config>
+        <aop:pointcut id="myPointcut" expression="execution(* net.xiaopang.service..*.*(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="myPointcut"/>
+    </aop:config>
+
+    <!--quartz配置-->
+    <bean id="myTask" class="net.xiaopang.task.QuartzTasks"/>
+    <!--定义bean中的任务-->
+    <bean id="importTourGroupsSchedulerBean" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject" ref="myTask"/>
+        <property name="targetMethod" value="task1"/>
+        <!--是否可以并发执行-->
+        <property name="concurrent" value="false"/>
+    </bean>
+    <bean id="importTourGroupsSchedulerBean2" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject" ref="myTask"/>
+        <property name="targetMethod" value="task2"/>
+        <!--是否可以并发执行-->
+        <property name="concurrent" value="false"/>
+    </bean>
+    <bean id="importTourGroupsSchedulerBean3" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject" ref="myTask"/>
+        <property name="targetMethod" value="task3"/>
+        <!--是否可以并发执行-->
+        <property name="concurrent" value="false"/>
+    </bean>
+    <!--调度触发器 Cron表达式-->
+    <bean id="importTourGroupsCronTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="importTourGroupsSchedulerBean"/>
+        <property name="cronExpression" value="0 * 23 * * ?"/>
+    </bean>
+    <bean id="importTourGroupsCronTrigger2" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="importTourGroupsSchedulerBean2"/>
+        <property name="cronExpression" value="0 43 23 * * ?"/>
+    </bean>
+    <bean id="importTourGroupsCronTrigger3" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="importTourGroupsSchedulerBean3"/>
+        <property name="cronExpression" value="0 43 23 * * ?"/>
+    </bean>
+    <!--调度工厂-->
+    <bean id="schedulerFactoryBean" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <property name="triggers">
+            <list>
+                <ref bean="importTourGroupsCronTrigger"/>
+                <ref bean="importTourGroupsCronTrigger2"/>
+                <ref bean="importTourGroupsCronTrigger3"/>
+            </list>
+        </property>
+    </bean>
+</beans>
